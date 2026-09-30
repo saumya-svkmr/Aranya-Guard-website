@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARANYA GUARD — Tea Plantation Elephant Detection</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --bg:#060a08;
+  --bg-alt:#0a100c;
+  --panel:#0d1510;
+  --panel-2:#111a14;
+  --line:#1c2b21;
+  --line-soft:#152019;
+  --green:#4dff85;
+  --green-dim:#1f5c39;
+  --green-glow:rgba(77,255,133,0.35);
+  --amber:#ff9a42;
+  --red:#ff5252;
+  --text:#e9ece7;
+  --text-dim:#82988a;
+  --text-faint:#4d5f54;
+  --display:'Space Grotesk',sans-serif;
+  --body:'IBM Plex Sans',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--body);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;border:none;}
+::selection{background:var(--green-dim);color:var(--text);}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
+
+.page{display:none;}
+.page.active{display:block;}
+
+/* ---------- shared texture ---------- */
+.grain-overlay{
+  position:absolute;inset:0;
+  opacity:0.05;
+  pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- nav ---------- */
+.nav{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 40px;
+  background:rgba(6,10,8,0.85);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.nav-logo{
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--display);font-weight:700;
+  font-size:19px;letter-spacing:0.02em;
+}
+.nav-logo .dot{
+  width:9px;height:9px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 8px 2px var(--green-glow);
+  animation:pulse-dot 2.4s ease-in-out infinite;
+}
+@keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:0.35;}}
+.nav-links{display:flex;align-items:center;gap:28px;font-size:14px;color:var(--text-dim);}
+.nav-links a:hover{color:var(--text);}
+.btn{
+  font-family:var(--mono);font-size:12.5px;letter-spacing:0.06em;text-transform:uppercase;
+  padding:11px 20px;border-radius:2px;
+  transition:all .15s ease;
+}
+.btn-primary{
+  background:var(--green);color:#04150a;font-weight:700;
+}
+.btn-primary:hover{background:#6dffa0;}
+.btn-outline{
+  background:transparent;color:var(--green);border:1px solid var(--green-dim);
+}
+.btn-outline:hover{border-color:var(--green);background:rgba(77,255,133,0.06);}
+.btn-ghost{background:transparent;color:var(--text-dim);}
+.btn-ghost:hover{color:var(--text);}
+
+/* ---------- hero ---------- */
+.hero{
+  position:relative;
+  padding:90px 40px 70px;
+  display:grid;grid-template-columns:1.05fr 0.95fr;gap:60px;
+  max-width:1280px;margin:0 auto;
+  align-items:center;
+}
+.eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;
+  color:var(--green);margin-bottom:22px;
+  display:flex;align-items:center;gap:10px;
+}
+.eyebrow::before{content:'';width:22px;height:1px;background:var(--green-dim);}
+h1.hero-title{
+  font-family:var(--display);font-weight:700;
+  font-size:clamp(40px,5.4vw,68px);
+  line-height:1.02;letter-spacing:-0.01em;
+  margin-bottom:22px;
+}
+h1.hero-title .accent{color:var(--green);}
+.hero-sub{
+  font-size:16.5px;line-height:1.65;color:var(--text-dim);
+  max-width:480px;margin-bottom:34px;
+}
+.hero-cta{display:flex;gap:14px;margin-bottom:42px;}
+.hero-stats{display:flex;gap:34px;flex-wrap:wrap;}
+.hstat b{
+  display:block;font-family:var(--display);font-size:26px;color:var(--text);
+}
+.hstat span{font-size:12px;color:var(--text-faint);font-family:var(--mono);letter-spacing:0.04em;}
+
+/* ---------- night vision viewport ---------- */
+.nv-frame{
+  position:relative;
+  aspect-ratio:4/3;
+  border:1px solid var(--line);
+  border-radius:3px;
+  overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%, #0d2415 0%, #030805 78%);
+  box-shadow:0 0 0 1px rgba(0,0,0,0.4), 0 30px 60px -20px rgba(0,0,0,0.8);
+}
+.nv-frame.small{aspect-ratio:16/9;}
+.login-gated-feed{
+  display:flex;align-items:center;justify-content:center;
+  min-height:420px;
+  background:radial-gradient(ellipse at 50% 40%, #0d2415 0%, #030805 78%);
+}
+.gated-message{
+  position:relative;z-index:2;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  max-width:310px;text-align:center;
+  padding:30px 24px;
+  border:1px solid var(--line);
+  background:rgba(6,10,8,0.88);
+  box-shadow:0 20px 50px rgba(0,0,0,0.45);
+}
+.gated-icon{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  color:var(--amber);border:1px solid rgba(255,154,66,.35);
+  padding:4px 8px;
+}
+.gated-message strong{
+  font-family:var(--display);font-size:18px;
+}
+.gated-message span{
+  color:var(--text-dim);font-size:13px;line-height:1.55;margin-bottom:8px;
+}
+.gated-message .btn{margin-top:4px;}
+.nv-canopy{
+  position:absolute;inset:0;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, rgba(77,255,133,0.5), transparent),
+    radial-gradient(2px 2px at 70% 65%, rgba(77,255,133,0.35), transparent),
+    radial-gradient(1.5px 1.5px at 45% 80%, rgba(77,255,133,0.4), transparent),
+    radial-gradient(1.5px 1.5px at 85% 20%, rgba(77,255,133,0.3), transparent),
+    radial-gradient(1.5px 1.5px at 10% 75%, rgba(77,255,133,0.3), transparent),
+    radial-gradient(1.5px 1.5px at 60% 15%, rgba(77,255,133,0.25), transparent),
+    radial-gradient(1.5px 1.5px at 33% 55%, rgba(77,255,133,0.3), transparent);
+  opacity:0.8;
+}
+.nv-vignette{
+  position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 45%, transparent 40%, rgba(0,0,0,0.75) 100%);
+  pointer-events:none;
+}
+.nv-scanline{
+  position:absolute;left:0;right:0;height:40%;
+  background:linear-gradient(to bottom, transparent, rgba(77,255,133,0.08) 50%, transparent);
+  animation:sweep 5s linear infinite;
+  pointer-events:none;
+}
+@keyframes sweep{0%{top:-40%;}100%{top:100%;}}
+.nv-flicker{
+  position:absolute;inset:0;
+  background:var(--green);
+  opacity:0;
+  animation:flick 7s steps(1) infinite;
+  mix-blend-mode:overlay;
+  pointer-events:none;
+}
+@keyframes flick{0%,93%,100%{opacity:0;}94%{opacity:0.05;}96%{opacity:0;}97%{opacity:0.03;}}
+.nv-hud{
+  position:absolute;inset:0;pointer-events:none;
+  font-family:var(--mono);font-size:11px;color:var(--green);
+  text-shadow:0 0 6px rgba(77,255,133,0.5);
+}
+.nv-hud .tl{position:absolute;top:12px;left:14px;}
+.nv-hud .tr{position:absolute;top:12px;right:14px;text-align:right;}
+.nv-hud .bl{position:absolute;bottom:12px;left:14px;}
+.nv-hud .br{position:absolute;bottom:12px;right:14px;text-align:right;}
+.nv-hud .crosshair{
+  position:absolute;top:50%;left:50%;width:26px;height:26px;
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(77,255,133,0.35);
+}
+.nv-hud .crosshair::before,.nv-hud .crosshair::after{
+  content:'';position:absolute;background:rgba(77,255,133,0.35);
+}
+.nv-hud .crosshair::before{top:50%;left:-8px;right:-8px;height:1px;}
+.nv-hud .crosshair::after{left:50%;top:-8px;bottom:-8px;width:1px;}
+.rec-dot{width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;margin-right:6px;animation:pulse-dot 1.2s infinite;}
+
+.nv-box{
+  position:absolute;
+  border:1.5px solid var(--green);
+  box-shadow:0 0 12px 1px var(--green-glow);
+  opacity:0;
+  transition:opacity .4s ease;
+}
+.nv-box.show{opacity:1;}
+.nv-box .tag{
+  position:absolute;top:-22px;left:-1.5px;
+  font-family:var(--mono);font-size:10.5px;font-weight:700;
+  background:var(--green);color:#04150a;
+  padding:2px 6px;letter-spacing:0.03em;white-space:nowrap;
+}
+.nv-alert-banner{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:9px 14px;
+  background:rgba(255,82,82,0.14);
+  border-top:1px solid var(--red);
+  color:#ffb3b3;
+  font-family:var(--mono);font-size:11.5px;letter-spacing:0.04em;
+  display:flex;align-items:center;gap:8px;
+  opacity:0;transform:translateY(100%);
+  transition:all .35s ease;
+}
+.nv-alert-banner.show{opacity:1;transform:translateY(0);}
+
+/* ---------- how it works ---------- */
+.section{max-width:1280px;margin:0 auto;padding:80px 40px;}
+.section-head{margin-bottom:46px;max-width:600px;}
+.section-eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--text-faint);margin-bottom:12px;
+}
+.section-title{
+  font-family:var(--display);font-weight:600;font-size:clamp(26px,3vw,36px);
+  letter-spacing:-0.01em;
+}
+.section-desc{margin-top:14px;font-size:14.5px;line-height:1.65;color:var(--text-dim);}
+
+/* ---------- edge AI perf ---------- */
+.perf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:1px;}
+.perf-card{background:var(--panel);padding:28px 22px;text-align:left;}
+.perf-num{font-family:var(--display);font-weight:700;font-size:28px;color:var(--green);margin-bottom:8px;}
+.perf-label{font-size:12.5px;color:var(--text-dim);}
+.edge-detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-top:none;}
+.edge-detail{background:var(--bg-alt);padding:22px 22px;}
+.edge-detail .k{font-family:var(--mono);font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:9px;}
+.edge-detail .v{font-size:13.5px;color:var(--text-dim);line-height:1.6;}
+
+@media(max-width:980px){
+  .perf-grid,.edge-detail-grid{grid-template-columns:repeat(1,1fr);}
+}
+
+.note-band{
+  max-width:1280px;margin:0 auto;padding:0 40px 90px;
+}
+.note{
+  border:1px solid var(--line-soft);
+  border-left:2px solid var(--amber);
+  background:var(--panel);
+  padding:20px 24px;
+  font-size:13.5px;color:var(--text-dim);line-height:1.7;
+  max-width:760px;
+}
+.note b{color:var(--text);}
+
+footer{
+  border-top:1px solid var(--line);
+  padding:30px 40px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--mono);font-size:11.5px;color:var(--text-faint);
+  max-width:1280px;margin:0 auto;
+}
+
+/* ---------- login ---------- */
+.login-wrap{
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:40px;
+  position:relative;
+  background:radial-gradient(ellipse at 50% 0%, #0c1811 0%, var(--bg) 60%);
+}
+.login-card{
+  width:100%;max-width:400px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  padding:40px 36px;
+  position:relative;
+  z-index:2;
+}
+.login-logo{
+  display:flex;align-items:center;gap:10px;margin-bottom:8px;
+  font-family:var(--display);font-weight:700;font-size:19px;
+}
+.login-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px 2px var(--green-glow);}
+.login-sub{font-size:13px;color:var(--text-dim);margin-bottom:32px;}
+.field{margin-bottom:20px;}
+.field label{
+  display:block;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text-faint);margin-bottom:8px;
+}
+.field input{
+  width:100%;background:var(--bg);border:1px solid var(--line);
+  color:var(--text);padding:12px 13px;font-family:var(--mono);font-size:13.5px;
+  transition:border-color .15s;
+}
+.field input:focus{border-color:var(--green);}
+.field input::placeholder{color:var(--text-faint);}
+.login-btn{
+  width:100%;padding:13px;margin-top:6px;
+  background:var(--green);color:#04150a;font-weight:700;
+  font-family:var(--mono);font-size:12.5px;letter-spacing:0.06em;text-transform:uppercase;
+}
+.login-btn:hover{background:#6dffa0;}
+.login-note{
+  margin-top:20px;font-size:12px;color:var(--text-faint);line-height:1.6;
+  border-top:1px solid var(--line-soft);padding-top:16px;
+}
+.login-error{
+  display:none;
+  margin-bottom:18px;padding:10px 12px;
+  border:1px solid rgba(255,82,82,0.4);background:rgba(255,82,82,0.08);
+  color:#ffb3b3;font-family:var(--mono);font-size:12px;
+}
+.back-home{
+  position:absolute;top:28px;left:40px;z-index:3;
+  font-family:var(--mono);font-size:12px;color:var(--text-dim);
+}
+.back-home:hover{color:var(--text);}
+
+/* ---------- operational dashboard feature panels ---------- */
+.dashboard-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.dashboard-card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  padding:18px;
+  min-width:0;
+}
+.dashboard-card .k{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-faint);
+  margin-bottom:8px;
+}
+.dashboard-card .big{
+  font-family:var(--display);
+  font-size:28px;
+  font-weight:700;
+  color:var(--text);
+}
+.dashboard-card .sub{
+  margin-top:5px;
+  color:var(--text-dim);
+  font-size:11.5px;
+}
+.dashboard-card.good .big{color:var(--green);}
+.dashboard-card.warn .big{color:var(--amber);}
+.dashboard-card.danger .big{color:#ffb3b3;}
+
+.ops-grid{
+  display:grid;
+  grid-template-columns:1.2fr .8fr;
+  gap:18px;
+}
+.panel{
+  border:1px solid var(--line);
+  background:var(--panel);
+  min-width:0;
+}
+.panel-head{
+  padding:15px 18px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+.panel-head h3{
+  font-family:var(--display);
+  font-size:15px;
+  font-weight:600;
+}
+.panel-head span{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text-faint);
+}
+.kpi-table{
+  width:100%;
+  border-collapse:collapse;
+}
+.kpi-table th,.kpi-table td{
+  padding:11px 14px;
+  border-bottom:1px solid var(--line-soft);
+  text-align:left;
+  font-size:11.5px;
+}
+.kpi-table th{
+  color:var(--text-faint);
+  font-family:var(--mono);
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.kpi-table td{color:var(--text-dim);}
+.kpi-table td:first-child{color:var(--text);}
+.status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-family:var(--mono);
+  font-size:9.5px;
+  text-transform:uppercase;
+}
+.status::before{
+  content:'';
+  width:6px;height:6px;border-radius:50%;
+  background:var(--text-faint);
+}
+.status.ok{color:var(--green);}
+.status.ok::before{background:var(--green);}
+.status.warn{color:var(--amber);}
+.status.warn::before{background:var(--amber);}
+.status.alert{color:#ffb3b3;}
+.status.alert::before{background:var(--red);}
+
+.hotspot-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:1px;
+  background:var(--line);
+}
+.hotspot{
+  background:var(--panel);
+  padding:15px;
+}
+.hotspot .zone{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text-faint);
+  text-transform:uppercase;
+}
+.hotspot strong{
+  display:block;
+  margin:5px 0 3px;
+  font-family:var(--display);
+  font-size:17px;
+}
+.hotspot span{
+  color:var(--text-dim);
+  font-size:11px;
+}
+.bar-row{
+  display:grid;
+  grid-template-columns:105px 1fr 45px;
+  gap:9px;
+  align-items:center;
+  padding:9px 18px;
+}
+.bar-label,.bar-value{
+  font-family:var(--mono);
+  font-size:9.5px;
+  color:var(--text-dim);
+}
+.bar-value{text-align:right;color:var(--text);}
+.bar-track{
+  height:6px;
+  background:var(--bg);
+  border:1px solid var(--line);
+}
+.bar-fill{
+  height:100%;
+  background:var(--green);
+  width:0;
+  transition:width .5s ease;
+}
+.alert-rules{
+  display:grid;
+  gap:1px;
+  background:var(--line);
+}
+.rule{
+  background:var(--panel);
+  padding:13px 15px;
+  display:grid;
+  grid-template-columns:30px 1fr auto;
+  gap:10px;
+  align-items:center;
+}
+.rule-num{
+  font-family:var(--mono);
+  color:var(--green-dim);
+  font-size:10px;
+}
+.rule-copy strong{
+  display:block;
+  font-family:var(--display);
+  font-size:12.5px;
+  margin-bottom:2px;
+}
+.rule-copy span{
+  color:var(--text-dim);
+  font-size:10.5px;
+}
+.rule-toggle{
+  appearance:none;
+  width:34px;height:18px;
+  border:1px solid var(--green-dim);
+  background:rgba(77,255,133,.12);
+  border-radius:20px;
+  position:relative;
+  cursor:pointer;
+}
+.rule-toggle::after{
+  content:'';
+  position:absolute;
+  top:2px;left:17px;
+  width:12px;height:12px;
+  border-radius:50%;
+  background:var(--green);
+  transition:left .15s;
+}
+.rule-toggle.off{
+  border-color:var(--line);
+  background:var(--bg);
+}
+.rule-toggle.off::after{
+  left:2px;
+  background:var(--text-faint);
+}
+.trend-box{
+  padding:18px;
+}
+.sparkline{
+  width:100%;
+  height:90px;
+  display:flex;
+  align-items:flex-end;
+  gap:6px;
+  border-bottom:1px solid var(--line);
+}
+.spark-bar{
+  flex:1;
+  min-width:6px;
+  background:var(--green-dim);
+  opacity:.9;
+  transition:height .4s ease;
+}
+.spark-bar.active{background:var(--green);}
+.metric-strip{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:1px;
+  background:var(--line);
+  border-top:1px solid var(--line);
+}
+.metric-strip div{
+  background:var(--panel);
+  padding:12px 14px;
+}
+.metric-strip b{
+  display:block;
+  font-family:var(--display);
+  font-size:17px;
+}
+.metric-strip span{
+  color:var(--text-faint);
+  font-size:10px;
+}
+@media(max-width:1100px){
+  .dashboard-grid{grid-template-columns:repeat(2,1fr);}
+  .ops-grid{grid-template-columns:1fr;}
+}
+@media(max-width:700px){
+  .dashboard-grid{grid-template-columns:1fr;}
+  .bar-row{grid-template-columns:85px 1fr 38px;}
+  .metric-strip{grid-template-columns:1fr;}
+}
+
+/* ---------- role-based access & User Badging ---------- */
+.role-hidden{display:none !important;}
+
+.user-badge-group{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(13,21,16,0.9);
+  border:1px solid var(--line);
+  padding:4px 10px 4px 12px;
+  border-radius:3px;
+}
+.user-display-name{
+  font-family:var(--display);font-size:13.5px;font-weight:600;
+  color:var(--text);letter-spacing:0.01em;
+}
+
+.role-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border:1px solid var(--green-dim);
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--green);
+  background:rgba(77,255,133,.08);
+  border-radius:2px;
+}
+.role-badge.role-viewer{border-color:var(--text-faint);color:var(--text-dim);background:rgba(255,255,255,0.04);}
+.role-badge.role-worker{border-color:var(--green-dim);color:var(--green);background:rgba(77,255,133,0.08);}
+.role-badge.role-supervisor{border-color:var(--amber);color:var(--amber);background:rgba(255,154,66,0.12);}
+.role-badge.role-admin{border-color:var(--red);color:#ffb3b3;background:rgba(255,82,82,0.15);}
+
+.viewer-only-note{
+  border:1px solid var(--line-soft);
+  border-left:2px solid var(--green-dim);
+  background:var(--panel);
+  padding:16px 18px;color:var(--text-dim);
+  font-size:12.5px;line-height:1.6;
+}
+
+/* ---------- dashboard ---------- */
+.dash{min-height:100vh;display:flex;flex-direction:column;}
+.dash-top{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 28px;border-bottom:1px solid var(--line);
+  background:var(--bg-alt);
+}
+.dash-brand{display:flex;align-items:center;gap:12px;}
+.dash-brand .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px 2px var(--green-glow);}
+.dash-brand span{font-family:var(--display);font-weight:700;font-size:17px;}
+.dash-status{
+  display:flex;align-items:center;gap:18px;
+  font-family:var(--mono);font-size:11.5px;color:var(--text-dim);
+}
+.status-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 10px;border:1px solid var(--line);border-radius:2px;
+}
+.status-pill .sq{width:6px;height:6px;background:var(--green);border-radius:50%;}
+.dash-body{
+  flex:1;display:grid;grid-template-columns:1fr 320px;
+  min-height:0;
+}
+.dash-main{padding:24px 28px;display:flex;flex-direction:column;gap:18px;min-width:0;}
+.feed-titlebar{display:flex;align-items:center;justify-content:space-between;}
+.feed-titlebar h2{font-family:var(--display);font-size:18px;font-weight:600;}
+.feed-titlebar .meta{font-family:var(--mono);font-size:11.5px;color:var(--text-faint);}
+
+.emergency-row{display:flex;gap:12px;flex-wrap:wrap;}
+.ebtn{
+  padding:13px 18px;border:1px solid var(--line);background:var(--panel);
+  font-family:var(--mono);font-size:12px;letter-spacing:0.03em;
+  display:flex;align-items:center;gap:9px;color:var(--text);
+  transition:all .15s;
+}
+.ebtn .ico{width:8px;height:8px;border-radius:50%;}
+.ebtn:hover{border-color:var(--text-dim);}
+.ebtn.critical{border-color:rgba(255,82,82,0.4);}
+.ebtn.critical .ico{background:var(--red);}
+.ebtn.critical:hover{background:rgba(255,82,82,0.08);border-color:var(--red);}
+.ebtn.warn .ico{background:var(--amber);}
+.ebtn.warn:hover{background:rgba(255,154,66,0.08);border-color:var(--amber);}
+.ebtn.info .ico{background:var(--green);}
+.ebtn.info:hover{background:rgba(77,255,133,0.08);border-color:var(--green);}
+
+.detect-flash{
+  display:none;
+  padding:12px 16px;border:1px solid rgba(255,154,66,0.5);
+  background:rgba(255,154,66,0.09);color:#ffcb9a;
+  font-family:var(--mono);font-size:12.5px;
+  align-items:center;gap:10px;
+}
+.detect-flash.show{display:flex;}
+
+.sidebar{
+  border-left:1px solid var(--line);
+  background:var(--bg-alt);
+  display:flex;flex-direction:column;min-height:0;
+}
+.sidebar-head{
+  padding:20px 22px 14px;border-bottom:1px solid var(--line);
+}
+.sidebar-head h3{font-family:var(--display);font-size:15px;font-weight:600;margin-bottom:4px;}
+.sidebar-head p{font-family:var(--mono);font-size:11px;color:var(--text-faint);}
+.log-list{flex:1;overflow-y:auto;padding:8px 0;}
+.log-item{
+  padding:13px 22px;border-bottom:1px solid var(--line-soft);
+  display:flex;flex-direction:column;gap:4px;
+}
+.log-item .row1{display:flex;justify-content:space-between;align-items:center;}
+.log-item .time{font-family:var(--mono);font-size:12.5px;color:var(--text);}
+.log-item .badge{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;
+  padding:2px 6px;border-radius:2px;
+}
+.badge.detect{background:rgba(77,255,133,0.12);color:var(--green);border:1px solid var(--green-dim);}
+.badge.manual{background:rgba(255,154,66,0.12);color:var(--amber);border:1px solid rgba(255,154,66,0.35);}
+.log-item .desc{font-size:11.5px;color:var(--text-dim);}
+.log-empty{padding:26px 22px;color:var(--text-faint);font-size:12.5px;font-family:var(--mono);}
+
+.dash-footer{
+  padding:12px 28px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:10.5px;color:var(--text-faint);
+  display:flex;justify-content:space-between;
+}
+
+@media(max-width:980px){
+  .hero{grid-template-columns:1fr;padding-top:50px;}
+  .dash-body{grid-template-columns:1fr;}
+  .sidebar{border-left:none;border-top:1px solid var(--line);}
+  .nav{padding:16px 20px;}
+  .section{padding:60px 20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= HOME PAGE ================= -->
+<div class="page active" id="page-home">
+  <nav class="nav">
+    <div class="nav-logo"><span class="dot"></span>ARANYA GUARD</div>
+    <div class="nav-links">
+      <button class="btn btn-outline" onclick="goTo('login')">Open monitoring console</button>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Tea plantation elephant early warning</div>
+      <h1 class="hero-title">Watch the tree line<br>so nobody has<br>to lose <span class="accent">sleep for it.</span></h1>
+      <p class="hero-sub">Aranya Guard flies scheduled DJI Mini 4K night patrols along the tea plantation boundary, reads the infrared feed for elephant movement, and pushes an alert to your team the moment a herd approaches a settlement or field.</p>
+      <div class="hero-cta">
+        <button class="btn btn-primary" onclick="goTo('login')">Open live console</button>
+        <a href="#edge-ai" class="btn btn-outline">See how detection works</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hstat"><b>24/7</b><span>Scheduled night patrols</span></div>
+        <div class="hstat"><b>&lt;15s</b><span>Detection to alert</span></div>
+        <div class="hstat"><b>RTMP</b><span>Live feed ingest</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="nv-frame login-gated-feed" id="homeFeed">
+        <div class="grain-overlay"></div>
+        <div class="gated-message">
+          <div class="gated-icon">LOCKED</div>
+          <strong>LIVE DRONE FEED</strong>
+          <span>Sign in to access the night-vision monitoring console.</span>
+          <button class="btn btn-primary" type="button" onclick="goTo('login')">Console login</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="edge-ai">
+    <div class="section-head">
+      <div class="section-eyebrow">Edge AI</div>
+      <h2 class="section-title">The first decision is made at the plantation</h2>
+      <p class="section-desc">Sub-second local inference, with continued operation even without a cloud connection.</p>
+    </div>
+
+    <div class="perf-grid">
+      <div class="perf-card"><div class="perf-num">&lt;500ms</div><div class="perf-label">PoC local classification</div></div>
+      <div class="perf-card"><div class="perf-num">&lt;5s</div><div class="perf-label">Detection → siren target</div></div>
+      <div class="perf-card"><div class="perf-num">100%</div><div class="perf-label">Local inference during outage</div></div>
+      <div class="perf-card"><div class="perf-num">&lt;50ms</div><div class="perf-label">Deep-dive target on edge</div></div>
+    </div>
+
+    <div class="edge-detail-grid">
+      <div class="edge-detail">
+        <div class="k">Model pipeline</div>
+        <div class="v">YOLO-based animal detection → INT8 quantization → TensorRT / TFLite → Jetson / Raspberry Pi 5.</div>
+      </div>
+      <div class="edge-detail">
+        <div class="k">Species focus</div>
+        <div class="v">Asian elephant only — optimized for night-time movement along tea plantation boundaries, worker paths, and estate roads.</div>
+      </div>
+      <div class="edge-detail">
+        <div class="k">Why edge-first?</div>
+        <div class="v">Less bandwidth, lower latency, better privacy, and resilience when cellular connectivity fails.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-band">
+    <div class="note"><b>On the live feed:</b> browsers can't play a raw RTMP stream directly — it needs a media server (e.g. MediaMTX or nginx-rtmp) to convert it to HLS or WebRTC first. This console shows what that converted feed looks like in the operator view; wire in your media server's HLS URL to go fully live.</div>
+  </div>
+
+  <footer>
+    <span>ARANYA GUARD — TEA PLANTATION ELEPHANT EARLY WARNING</span>
+    <span>SECTOR 7 GROUND STATION</span>
+  </footer>
+</div>
+
+<!-- ================= LOGIN PAGE ================= -->
+<div class="page" id="page-login">
+  <div class="login-wrap">
+    <a class="back-home" href="#" onclick="goTo('home');return false;">← Back to overview</a>
+    <div class="login-card">
+      <div class="login-logo"><span class="dot"></span>ARANYA GUARD</div>
+      <div class="login-sub">Sign in to open the live monitoring console.</div>
+
+      <div class="login-error" id="loginError">Enter both a user ID and password to continue.</div>
+
+      <form id="loginForm">
+        <div class="field">
+          <label for="userid">User ID</label>
+          <input type="text" id="userid" placeholder="e.g. ranger.priya" autocomplete="username">
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button type="submit" class="login-btn" id="loginSubmit">Access console</button>
+      </form>
+
+      <div class="login-note">Role-based access: Viewer = feed only · Worker = feed + sightings · Supervisor = full monitoring + alerts · Admin = full access + alert-rule controls.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= DASHBOARD PAGE ================= -->
+<div class="page" id="page-dashboard">
+  <div class="dash">
+    <div class="dash-top">
+      <div class="dash-brand"><span class="dot"></span><span>ARANYA GUARD</span></div>
+      <div class="dash-status">
+        <span class="status-pill"><span class="sq"></span>RTMP LINK STABLE</span>
+        <span class="status-pill"><span class="sq"></span>DJI MINI 4K · SECTOR 7</span>
+        
+        <!-- User Badge Container showing Display Name + Role Label -->
+        <div class="user-badge-group">
+          <span id="dashUser" class="user-display-name">USER —</span>
+          <span id="dashRole" class="role-badge">ROLE —</span>
+        </div>
+
+        <button class="btn btn-ghost" type="button" onclick="logout()">Log out</button>
+      </div>
+    </div>
+
+    <div class="dash-body">
+      <div class="dash-main">
+        <div class="feed-titlebar">
+          <h2>Live feed — Sector 7 tea plantation edge</h2>
+          <span class="meta" id="dashClock">00:00:00</span>
+        </div>
+
+        <div class="nv-frame small" id="dashFeed">
+          <div class="grain-overlay"></div>
+          <div class="nv-canopy"></div>
+          <div class="nv-scanline"></div>
+          <div class="nv-flicker"></div>
+          <div class="nv-vignette"></div>
+          <div class="nv-box" id="dashBox"><span class="tag">ELEPHANT · 96%</span></div>
+          <div class="nv-hud">
+            <div class="tl"><span class="rec-dot"></span>NIGHT VISION · LIVE</div>
+            <div class="tr">DJI MINI 4K<br>SECTOR 7 — TEA PLANTATION EDGE</div>
+            <div class="crosshair"></div>
+            <div class="bl">ALT 62M · IR ON</div>
+            <div class="br">BATT 71% · GPS LOCK</div>
+          </div>
+          <div class="nv-alert-banner" id="dashBanner">▲ ELEPHANT DETECTED — SECTOR 7, TEA PLANTATION BOUNDARY</div>
+        </div>
+
+        <div class="viewer-only-note role-hidden" id="viewerOnlyNote">You have Viewer access. The live feed is available, but operational metrics, sighting history, alerts, and rule controls are restricted to higher roles.</div>
+
+        <div class="detect-flash" id="detectFlash">▲ New sighting logged — check the sighting log for the timestamp.</div>
+
+        <!-- Live operational KPIs — Supervisor/Admin -->
+        <div class="dashboard-grid" id="dashboardKpis" data-min-role="supervisor">
+          <div class="dashboard-card good">
+            <div class="k">Intrusion events</div>
+            <div class="big" id="kpiIntrusions">12</div>
+            <div class="sub">this shift · elephant-only monitoring</div>
+          </div>
+          <div class="dashboard-card good">
+            <div class="k">Alert response</div>
+            <div class="big" id="kpiResponse">2.4s</div>
+            <div class="sub">detection → acknowledgement</div>
+          </div>
+          <div class="dashboard-card warn">
+            <div class="k">Worker exposure</div>
+            <div class="big" id="kpiExposure">4</div>
+            <div class="sub">workers in active risk zones</div>
+          </div>
+          <div class="dashboard-card good">
+            <div class="k">Model health</div>
+            <div class="big" id="kpiHealth">99.2%</div>
+            <div class="sub">camera + sensor uptime</div>
+          </div>
+        </div>
+
+        <div class="ops-grid" data-min-role="supervisor">
+          <!-- Core dashboard metrics -->
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Core dashboard metrics</h3>
+              <span>LIVE SHIFT</span>
+            </div>
+            <table class="kpi-table">
+              <thead>
+                <tr><th>Metric</th><th>Current</th><th>Operational state</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Elephant detections</td><td id="metricSpecies">Elephant · 8 detections</td><td><span class="status ok">Tracking</span></td></tr>
+                <tr><td>Confirmed alerts</td><td id="metricAlerts">7</td><td><span class="status ok">Within target</span></td></tr>
+                <tr><td>False alarms</td><td id="metricFalse">2.1%</td><td><span class="status ok">Below 3%</span></td></tr>
+                <tr><td>Missed detections</td><td>0</td><td><span class="status ok">No misses</span></td></tr>
+                <tr><td>Acknowledgement time</td><td id="metricAck">2.4s</td><td><span class="status ok">Under 3s</span></td></tr>
+                <tr><td>Frame processing</td><td>28 FPS</td><td><span class="status ok">Nominal</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Worker safety -->
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Worker-safety KPIs</h3>
+              <span>RISK MONITOR</span>
+            </div>
+            <table class="kpi-table">
+              <tbody>
+                <tr><td>Workers in danger zones</td><td id="workersDanger">4</td><td><span class="status warn">Monitor</span></td></tr>
+                <tr><td>Workers alerted / incident</td><td>3.2 avg</td><td><span class="status ok">Connected</span></td></tr>
+                <tr><td>Exposure after detection</td><td id="exposureTime">46s</td><td><span class="status warn">Reduce</span></td></tr>
+                <tr><td>Evacuation completion</td><td>91%</td><td><span class="status ok">On track</span></td></tr>
+                <tr><td>Near-miss events</td><td>1</td><td><span class="status alert">Review</span></td></tr>
+                <tr><td>Patrol compliance</td><td>96%</td><td><span class="status ok">Good</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="ops-grid" data-min-role="supervisor">
+          <!-- Location & pattern intelligence -->
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Location &amp; pattern intelligence</h3>
+              <span>HOTSPOTS</span>
+            </div>
+            <div class="hotspot-grid">
+              <div class="hotspot"><div class="zone">Zone A · tea plantation boundary</div><strong>8 incursions</strong><span>Repeated west → east crossing</span></div>
+              <div class="hotspot"><div class="zone">Zone B · upper tea block</div><strong>5 incursions</strong><span>Most active after 22:00</span></div>
+              <div class="hotspot"><div class="zone">Zone C · estate service road</div><strong>3 incursions</strong><span>Median distance 74m from workers</span></div>
+              <div class="hotspot"><div class="zone">Zone D · tea plantation boundary</div><strong>2 incursions</strong><span>Fog-linked blind-spot risk</span></div>
+            </div>
+            <div class="panel-head" style="border-top:1px solid var(--line);">
+              <h3>Incidents by zone</h3><span>SHIFT TOTAL</span>
+            </div>
+            <div class="bar-row"><span class="bar-label">Tea boundary</span><div class="bar-track"><div class="bar-fill" style="width:82%"></div></div><span class="bar-value">8</span></div>
+            <div class="bar-row"><span class="bar-label">Upper tea block</span><div class="bar-track"><div class="bar-fill" style="width:51%"></div></div><span class="bar-value">5</span></div>
+            <div class="bar-row"><span class="bar-label">Service road</span><div class="bar-track"><div class="bar-fill" style="width:31%"></div></div><span class="bar-value">3</span></div>
+            <div class="bar-row"><span class="bar-label">Plantation boundary</span><div class="bar-track"><div class="bar-fill" style="width:20%"></div></div><span class="bar-value">2</span></div>
+          </div>
+
+          <!-- Incident trend -->
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Night vs. day activity</h3>
+              <span>LAST 12H</span>
+            </div>
+            <div class="trend-box">
+              <div class="sparkline" id="incidentTrend">
+                <div class="spark-bar" style="height:18%"></div>
+                <div class="spark-bar" style="height:25%"></div>
+                <div class="spark-bar" style="height:30%"></div>
+                <div class="spark-bar" style="height:22%"></div>
+                <div class="spark-bar" style="height:45%"></div>
+                <div class="spark-bar" style="height:60%"></div>
+                <div class="spark-bar active" style="height:78%"></div>
+                <div class="spark-bar active" style="height:68%"></div>
+                <div class="spark-bar active" style="height:88%"></div>
+                <div class="spark-bar active" style="height:72%"></div>
+                <div class="spark-bar active" style="height:54%"></div>
+                <div class="spark-bar active" style="height:82%"></div>
+              </div>
+              <div class="metric-strip">
+                <div><b>10</b><span>night incidents</span></div>
+                <div><b>2</b><span>day incidents</span></div>
+                <div><b>83%</b><span>night share</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alert logic — Admin only -->
+        <div class="panel" data-min-role="admin">
+          <div class="panel-head">
+            <h3>Alert logic &amp; escalation</h3>
+            <span>RULE ENGINE</span>
+          </div>
+          <div class="alert-rules">
+            <div class="rule"><span class="rule-num">01</span><div class="rule-copy"><strong>Animal inside boundary zone</strong><span>Start an incident when a tracked animal crosses the configured geofence.</span></div><button class="rule-toggle" aria-label="Toggle boundary rule"></button></div>
+            <div class="rule"><span class="rule-num">02</span><div class="rule-copy"><strong>Confidence threshold exceeded</strong><span>Require the model confidence threshold before escalating.</span></div><button class="rule-toggle" aria-label="Toggle confidence rule"></button></div>
+            <div class="rule"><span class="rule-num">03</span><div class="rule-copy"><strong>Worker present in risk radius</strong><span>Escalate priority when worker locations overlap the animal risk radius.</span></div><button class="rule-toggle" aria-label="Toggle worker rule"></button></div>
+            <div class="rule"><span class="rule-num">04</span><div class="rule-copy"><strong>Persistent movement</strong><span>After continued movement, trigger siren, lights or deterrent actions.</span></div><button class="rule-toggle" aria-label="Toggle deterrent rule"></button></div>
+          </div>
+        </div>
+
+        <div class="feed-titlebar" data-min-role="supervisor">
+          <h2 style="font-size:15px;">Emergency alerts</h2>
+        </div>
+        <div class="emergency-row" data-min-role="supervisor">
+          <button class="ebtn critical" onclick="manualAlert('Rapid response dispatched', 'Ground team notified to intercept near Sector 7 boundary.')"><span class="ico"></span>Dispatch rapid response</button>
+          <button class="ebtn warn" onclick="manualAlert('Field alert sounded', 'Siren triggered at the tea block-boundary post.')"><span class="ico"></span>Sound field alert</button>
+          <button class="ebtn info" onclick="manualAlert('Forest department notified', 'Sighting summary sent to the plantation management team.')"><span class="ico"></span>Notify plantation response team</button>
+        </div>
+      </div>
+
+      <div class="sidebar" data-min-role="worker">
+        <div class="sidebar-head">
+          <h3>Sighting log</h3>
+          <p id="logCount">0 events recorded this session</p>
+        </div>
+        <div class="log-list" id="logList">
+          <div class="log-empty" id="logEmpty">No sightings yet. This panel fills in automatically as elephants are detected on the feed, and whenever you raise a manual alert.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-footer">
+      <span>GROUND STATION — SECTOR 7</span>
+      <span>FEED SOURCE: RTMP → HLS RELAY</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- navigation ---------------- */
+function goTo(page){
+  if(page === 'dashboard' && sessionStorage.getItem('aranyaLoggedIn') !== 'true'){
+    page = 'login';
+  }
+
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const target = document.getElementById('page-'+page);
+  if(!target) return;
+  target.classList.add('active');
+  window.scrollTo(0,0);
+}
+
+/* User account database with display names and role configurations */
+const AUTHORIZED_USERS = {
+  "viewer.guard":    { password: "View@2026",   role: "viewer",    displayName: "Guard Viewer" },
+  "worker.rahul":    { password: "Guard@2026",  role: "worker",    displayName: "Rahul Sharma" },
+  "worker.anita":    { password: "Tea@2026",    role: "worker",    displayName: "Anita Roy" },
+  "supervisor.priya":{ password: "Aranya@2026", role: "supervisor", displayName: "Priya Nair" },
+  "admin.aranya":    { password: "Forest@2026", role: "admin",    displayName: "Aranya Admin" }
+};
+
+/* Separate user-specific session storage initialization */
+function getUserLogsKey(uid){
+  return 'aranya_logs_' + uid;
+}
+
+function loadUserSessionData(uid){
+  const logsKey = getUserLogsKey(uid);
+  const rawLogs = sessionStorage.getItem(logsKey);
+  const logs = rawLogs ? JSON.parse(rawLogs) : [];
+  
+  const list = document.getElementById('logList');
+  if(!list) return;
+
+  list.innerHTML = '';
+  if(logs.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'log-empty';
+    empty.id = 'logEmpty';
+    empty.textContent = 'No sightings yet. This panel fills in automatically as elephants are detected on the feed, and whenever you raise a manual alert.';
+    list.appendChild(empty);
+    document.getElementById('logCount').textContent = '0 events recorded this session';
+    return;
+  }
+
+  logs.forEach(itemData => {
+    const item = document.createElement('div');
+    item.className = 'log-item';
+    const badgeClass = itemData.type === 'manual' ? 'manual' : 'detect';
+    const badgeText = itemData.type === 'manual' ? 'Manual' : 'Detected';
+    item.innerHTML = `
+      <div class="row1"><span class="time">${itemData.time}</span><span class="badge ${badgeClass}">${badgeText}</span></div>
+      <div class="desc">${itemData.desc}</div>
+    `;
+    list.appendChild(item);
+  });
+
+  document.getElementById('logCount').textContent = logs.length + ' event' + (logs.length===1?'':'s') + ' recorded this session';
+}
+
+function handleLogin(e){
+  if(e) e.preventDefault();
+
+  const uidEl = document.getElementById('userid');
+  const pwdEl = document.getElementById('password');
+  const err = document.getElementById('loginError');
+  const uid = uidEl ? uidEl.value.trim() : '';
+  const pwd = pwdEl ? pwdEl.value.trim() : '';
+
+  if(!uid || !pwd){
+    if(err){
+      err.textContent = 'Enter both a user ID and password to continue.';
+      err.style.display = 'block';
+    }
+    if(!uid && uidEl) uidEl.focus();
+    else if(pwdEl) pwdEl.focus();
+    return false;
+  }
+
+  if(err) err.style.display = 'none';
+
+  const account = AUTHORIZED_USERS[uid];
+  if(!account || account.password !== pwd){
+    if(err){
+      err.textContent = 'Access denied. Check your user ID and password.';
+      err.style.display = 'block';
+    }
+    if(pwdEl) pwdEl.select();
+    return false;
+  }
+
+  sessionStorage.setItem('aranyaLoggedIn', 'true');
+  sessionStorage.setItem('aranyaUser', uid);
+  sessionStorage.setItem('aranyaRole', account.role);
+  sessionStorage.setItem('aranyaDisplayName', account.displayName);
+
+  applyUserAndRoleInfo(account.displayName, account.role);
+  loadUserSessionData(uid);
+
+  goTo('dashboard');
+  return false;
+}
+
+function logout(){
+  sessionStorage.removeItem('aranyaLoggedIn');
+  sessionStorage.removeItem('aranyaUser');
+  sessionStorage.removeItem('aranyaRole');
+  sessionStorage.removeItem('aranyaDisplayName');
+  const form = document.getElementById('loginForm');
+  if(form) form.reset();
+  goTo('home');
+}
+
+const ROLE_RANK = { viewer: 1, worker: 2, supervisor: 3, admin: 4 };
+
+function applyUserAndRoleInfo(name, role){
+  const rank = ROLE_RANK[role] || 0;
+  
+  // Show/Hide role specific content panels
+  document.querySelectorAll('[data-min-role]').forEach(el=>{
+    const required = el.getAttribute('data-min-role');
+    el.classList.toggle('role-hidden', rank < (ROLE_RANK[required] || 99));
+  });
+
+  const viewerNote = document.getElementById('viewerOnlyNote');
+  if(viewerNote) viewerNote.classList.toggle('role-hidden', role !== 'viewer');
+
+  // Set User Display Name
+  const dashUser = document.getElementById('dashUser');
+  if(dashUser) dashUser.textContent = name;
+
+  // Set Role Badge and Color Styling
+  const dashRole = document.getElementById('dashRole');
+  if(dashRole) {
+    dashRole.textContent = role.toUpperCase();
+    dashRole.className = 'role-badge role-' + role;
+  }
+}
+
+/* ---------------- login wiring ---------------- */
+(function initLogin(){
+  const form = document.getElementById('loginForm');
+  if(form) form.addEventListener('submit', handleLogin);
+})();
+
+/* ---------------- dashboard feature interactions ---------------- */
+(function initDashboardFeatures(){
+  document.querySelectorAll('.rule-toggle').forEach(toggle=>{
+    toggle.addEventListener('click', ()=>{
+      if(sessionStorage.getItem('aranyaRole') !== 'admin') return;
+      toggle.classList.toggle('off');
+      const state = toggle.classList.contains('off') ? 'Disabled' : 'Enabled';
+      toggle.setAttribute('aria-label', state + ' alert rule');
+    });
+  });
+})();
+
+function refreshOperationalKpis(){
+  if(sessionStorage.getItem('aranyaLoggedIn') !== 'true') return;
+
+  const exposure = Math.max(1, 4 + Math.floor(Math.random()*3) - 1);
+  const response = (2.1 + Math.random()*0.9).toFixed(1);
+  const falseRate = (1.4 + Math.random()*1.2).toFixed(1);
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = value;
+  };
+
+  setText('kpiExposure', exposure);
+  setText('workersDanger', exposure);
+  setText('kpiResponse', response + 's');
+  setText('metricAck', response + 's');
+  setText('metricFalse', falseRate + '%');
+  setText('exposureTime', Math.floor(35 + Math.random()*25) + 's');
+
+  const trend = document.querySelectorAll('#incidentTrend .spark-bar');
+  trend.forEach((bar, i)=>{
+    const base = 18 + Math.random()*65;
+    bar.style.height = (i > 5 ? Math.min(95, base + 10) : base) + '%';
+  });
+}
+setInterval(refreshOperationalKpis, 6000);
+
+/* ---------------- clocks ---------------- */
+function tickClock(el){
+  if(!el) return;
+  const d = new Date();
+  el.textContent = d.toLocaleTimeString('en-GB',{hour12:false});
+}
+setInterval(()=>{
+  tickClock(document.getElementById('homeClock'));
+  tickClock(document.getElementById('dashClock'));
+},1000);
+
+/* ---------------- simulated detection engine ---------------- */
+function randomBoxPosition(frameEl){
+  const w = frameEl.clientWidth, h = frameEl.clientHeight;
+  const bw = Math.max(60, w*0.18), bh = Math.max(60, h*0.28);
+  const x = Math.random()*(w-bw-20)+10;
+  const y = Math.random()*(h-bh-20)+10;
+  return {x,y,bw,bh};
+}
+
+function triggerDetection(frameId, boxId, bannerId, logIt){
+  const frame = document.getElementById(frameId);
+  const box = document.getElementById(boxId);
+  const banner = document.getElementById(bannerId);
+  if(!frame || !box) return;
+
+  const pos = randomBoxPosition(frame);
+  box.style.left = pos.x+'px';
+  box.style.top = pos.y+'px';
+  box.style.width = pos.bw+'px';
+  box.style.height = pos.bh+'px';
+  box.classList.add('show');
+  if(banner) banner.classList.add('show');
+
+  setTimeout(()=>{
+    box.classList.remove('show');
+    if(banner) banner.classList.remove('show');
+  }, 4200);
+
+  if(logIt) logSighting('detect', 'Elephant detected on tea plantation feed');
+}
+
+function logSighting(type, desc){
+  const uid = sessionStorage.getItem('aranyaUser');
+  if(!uid) return;
+
+  const logsKey = getUserLogsKey(uid);
+  const rawLogs = sessionStorage.getItem(logsKey);
+  const logs = rawLogs ? JSON.parse(rawLogs) : [];
+  
+  const time = new Date().toLocaleTimeString('en-GB',{hour12:false});
+  const newItem = { time, type, desc };
+  logs.unshift(newItem);
+  
+  sessionStorage.setItem(logsKey, JSON.stringify(logs));
+
+  const list = document.getElementById('logList');
+  const empty = document.getElementById('logEmpty');
+  if(empty) empty.remove();
+
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  const badgeClass = type === 'manual' ? 'manual' : 'detect';
+  const badgeText = type === 'manual' ? 'Manual' : 'Detected';
+  item.innerHTML = `
+    <div class="row1"><span class="time">${time}</span><span class="badge ${badgeClass}">${badgeText}</span></div>
+    <div class="desc">${desc}</div>
+  `;
+  list.prepend(item);
+  document.getElementById('logCount').textContent = logs.length + ' event' + (logs.length===1?'':'s') + ' recorded this session';
+
+  if(type==='detect'){
+    const flash = document.getElementById('detectFlash');
+    if(flash){
+      flash.classList.add('show');
+      setTimeout(()=>flash.classList.remove('show'), 4000);
+    }
+  }
+}
+
+function manualAlert(title, desc){
+  const role = sessionStorage.getItem('aranyaRole') || '';
+  if((ROLE_RANK[role] || 0) < ROLE_RANK.supervisor){
+    return;
+  }
+  logSighting('manual', title + ' — ' + desc);
+}
+
+/* dashboard live detection loop */
+setInterval(()=>{
+  const dash = document.getElementById('page-dashboard');
+  if(
+    dash &&
+    dash.classList.contains('active') &&
+    sessionStorage.getItem('aranyaLoggedIn') === 'true'
+  ){
+    triggerDetection('dashFeed','dashBox','dashBanner', true);
+  }
+}, 14000 + Math.random()*8000);
+
+/* Restore a logged-in session when the page is refreshed. */
+(function initAuth(){
+  if(sessionStorage.getItem('aranyaLoggedIn') === 'true'){
+    const uid = sessionStorage.getItem('aranyaUser') || '';
+    const role = sessionStorage.getItem('aranyaRole') || 'viewer';
+    const name = sessionStorage.getItem('aranyaDisplayName') || uid;
+    
+    applyUserAndRoleInfo(name, role);
+    loadUserSessionData(uid);
+  } else {
+    goTo('home');
+  }
+})();
+</script>
+</body>
+</html>
